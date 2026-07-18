@@ -84,6 +84,7 @@ Bu şemaya yeni alan eklemek serbest; mevcut alan adı/anlamı değiştirilmez.
   "meta": {
     "source_file": "plan.dwg",
     "units": "mm",
+    "unit_warning": null,
     "generated_at": "2026-07-18T12:00:00Z",
     "bridge_version": "0.1"
   },
@@ -93,16 +94,14 @@ Bu şemaya yeni alan eklemek serbest; mevcut alan adı/anlamı değiştirilmez.
       "type": "wall",
       "confidence": 0.91,
       "source": ["layer_convention", "geometry_interpreter"],
-      "matched_rule": ["layer_regex:*DUVAR*", "parallel_offset:180mm"],
+      "matched_rule": ["layer_regex:*DUVAR*", "closed_rect_wall:t=180mm,l=4000mm"],
       "layer": "A-WALL",
       "geometry": {
         "kind": "polyline",
         "points": [[0, 0], [0, 180], [4000, 180], [4000, 0]],
         "closed": true
       },
-      "attributes": {
-        "thickness_mm": 180
-      }
+      "attributes": {}
     }
   ]
 }
@@ -113,12 +112,13 @@ Alan sözlüğü:
 | Alan                | Açıklama                                                        |
 |---------------------|------------------------------------------------------------------|
 | `meta.units`         | Normalize edilmiş birim — her zaman `"mm"`                       |
+| `meta.unit_warning`  | Çizimin `INSUNITS`'i `Undefined` geldiyse dolu bir uyarı metni (örn. `"INSUNITS tanımsız, mm varsayıldı"`), aksi halde `null`. |
 | `entities[].type`    | Comparator'ın nihai kararı (`wall`/`door`/`window`/`floor`/`unknown`) |
 | `entities[].confidence` | Comparator sonrası birleşik güven skoru                       |
 | `entities[].source`  | Katkı veren ajan(lar) — `["layer_convention"]`, `["geometry_interpreter"]` veya ikisi birden |
 | `entities[].matched_rule` | Şeffaflık için: hangi kural(lar) eşleşti                    |
 | `entities[].geometry` | Normalize edilmiş (mm) ham nokta listesi                        |
-| `entities[].attributes` | Tipe özgü ek veri (duvar kalınlığı vb.), opsiyonel            |
+| `entities[].attributes` | Tipe özgü ek veri, opsiyonel. **MVP'de yalnızca `conflict`** taşınır — `thickness_mm` gibi alanlar henüz doldurulmuyor (bkz. `docs/architecture.md` Açık Sorular). |
 | `entities[].attributes.conflict` | Yalnızca `true` iken yazılır — Comparator'ın iki ajanı farklı tiplerde bulduğu (çelişki) durumu işaretler; `source` dizisinin uzunluğu tek başına bunu ayırt edemez (hemfikirlikte de 2 eleman olabilir). Bkz. `agents/comparator-agent.md`. |
 
 Geriye dönük uyumluluk ilkesi: yeni alan eklemek serbest, mevcut alan

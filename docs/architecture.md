@@ -21,9 +21,48 @@ CADBridge/
     layer-convention-agent.md
     geometry-interpreter-agent.md
     comparator-agent.md
-  autocad-plugin/         — C#, .NET 8, AutoCAD 2026 plugin (extraction + sınıflandırma + bridge.json üretimi)
+  autocad-plugin/
+    CADBridge.AutoCad/          — C#, .NET 8: sınıflandırma ajanları, geometri,
+                                   extraction/birim normalizasyonu, bridge.json
+                                   writer, Orchestrator. Tamamen POCO —
+                                   AutoCAD API'sine hiç bağımlı değil, bu
+                                   yüzden bu geliştirme ortamında (Linux
+                                   sandbox) tam derlenip test edilebiliyor.
+    CADBridge.AutoCad.Tests/    — xUnit testleri (CI'da/sandboxta çalışır)
+    CADBridge.AutoCad.Plugin/   — Gerçek AutoCAD .NET API'sine (AcCoreMgd/
+                                   AcDbMgd/AcMgd) bağımlı ince adapter +
+                                   [CommandMethod] giriş noktası. **Bu proje
+                                   bu ortamda hiç derlenmedi/test edilmedi**
+                                   — AutoCAD Windows-only, gerekli DLL'ler
+                                   yalnızca AutoCAD kurulumu/ObjectARX SDK
+                                   ile gelir, sandboxta temin edilemez. Kod
+                                   docs/api-research.md'deki belgeli API
+                                   desenine göre yazıldı ama doğrulama
+                                   kullanıcının gerçek Visual Studio + AutoCAD
+                                   ortamına bırakıldı (bkz. Plugin projesi
+                                   içindeki README).
   sketchup-plugin/        — Ruby, SketchupExtension (bridge.json okuma + 3D geometri üretimi)
 ```
+
+### Test edilebilirlik sınırı (extraction katmanı)
+
+`Autodesk.AutoCAD.*` namespace'lerini kullanan hiçbir kod bu geliştirme
+ortamında derlenemez/test edilemez (yukarıya bkz.). Bu yüzden extraction
+katmanı bilinçli olarak ikiye bölündü:
+
+- **Seam (ayrım noktası)**: AutoCAD'den çıkan "aptal veri" —
+  `RawDrawingData` POCO'su (entity başına handle/layer/block adı/ham
+  nokta listesi/closed, çizim başına kendi `DrawingUnit` enum'ımız —
+  Autodesk'in `UnitsValue`'suna değil). `CADBridge.AutoCad.Plugin`
+  yalnızca bu POCO'yu doldurur (Transaction/BlockTableRecord traversal +
+  `UnitsValue → DrawingUnit` tek satırlık çeviri) — algoritma içermez.
+- **Testable taraf** (`CADBridge.AutoCad/Extraction/`): `UnitNormalizer`
+  (birim → mm ölçek, `Undefined → mm varsay + uyarı`) ve
+  `CadEntityFactory` (`RawDrawingData → CadEntity[]`) tamamen POCO,
+  gerçek testlerle doğrulanıyor.
+- **İlke**: derlenemeyen kod = mantıksız kod. Hata riski taşıyan her şey
+  testable tarafta; Plugin projesi yalnızca belgeli API deseninin
+  mekanik dökümü.
 
 ## Neden hibrit sınıflandırma
 
@@ -128,3 +167,11 @@ olarak işaretleniyor, ileride kalibre edilmeli:
   zaman/hangi koşulda (Comparator'dan önce mi çalışır, düşük güvenli
   sonuçları görüp mü tetiklenir) henüz kararlaştırılmadı — bkz.
   `agents/comparator-agent.md`.
+- **`attributes.thickness_mm` MVP'de yok**: bridge.json writer bu
+  iterasyonda `attributes`'ı yalnızca `conflict` ile sınırlı tutuyor.
+  Geometry Interpreter Agent'ın `matched_rule` string'i kalınlığı zaten
+  taşıyor (`"closed_rect_wall:t=180mm,l=4000mm"`), ama bunu writer'da
+  parse etmek `matched_rule`'ı (şemada "insan-okunabilir açıklama"
+  olarak tanımlı) gizli bir veri kontratına çevirir ve format değişirse
+  sessizce kırılır. Doğru yol ileride `Candidate`'e tipli bir alan
+  eklemek (örn. `ThicknessMm?`) — şemaya alan eklemek zaten serbest.
