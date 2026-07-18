@@ -63,6 +63,39 @@ Düşük güvenli elemanlar için ayrı layer:
 review_layer = model.layers.add('CADBridge_Review')
 ```
 
+Düşük güvenli (`confidence < 0.6`) elemanlar için materyal: yarı saydam
+turuncu, `RGB(255,128,0)`, alpha `0.5`, materyal adı `CADBridge_Review`.
+
+### MeshPlan — testable/untestable seam
+
+`core/` (saf Ruby, `Sketchup`/`Geom` bağımlılığı yok) ile
+`adapter/sketchup_renderer.rb` (gerçek SketchUp API'sine dokunan tek
+dosya, bu geliştirme ortamında test edilemez) arasındaki ayrım noktası
+`MeshPlan`'dır — `fill_from_mesh`'in beklediği şekle birebir uyan
+indeksli, düz veri:
+
+```ruby
+MeshPlan = Struct.new(:points, :polygons, :layer_name, :review, keyword_init: true)
+# points:  [[x_mm, y_mm, z_mm], ...]
+# polygons: [[i0, i1, i2, i3], ...]  (points içindeki 0-tabanlı indeksler)
+# layer_name: String (örn. "CADBridge" veya "CADBridge_Review")
+# review: bool — true ise adapter CADBridge_Review materyalini uygular
+```
+
+`adapter/sketchup_renderer.rb`, bir `MeshPlan`'ı alıp yalnızca
+`Geom::PolygonMesh.new` + `add_point`/`add_polygon` +
+`entities.fill_from_mesh` + `model.layers.add`/materyal atama
+çağırır — hiçbir hesap/algoritma içermez (mekanik döküm).
+
+Her tip için üretilen `MeshPlan`:
+
+| Tip | Geometri kaynağı | 3D üretim |
+|-----|-------------------|-----------|
+| `wall` | kendi footprint'i (kapalı ince dikdörtgen) | footprint, sabit duvar yüksekliğine (2700mm) ekstrüde edilir |
+| `floor` | kapalı poligon | z=0'da düz yüzey |
+| `window` | kendi footprint'i (duvar kalınlığı bandında ince dikdörtgen) | footprint'ten **bağımsız**, parapet (900mm) ile parapet+pencere yüksekliği (900+1500=2400mm) arasında serbest duran kutu |
+| `door` | kapı kanadı sweep yayı (arc, dikdörtgen açıklık DEĞİL) | yayın kirişi (chord) = açıklık genişliği; zeminden 2100mm yüksekliğe, 40mm kalınlığında bir kanat kutusu + yayın kendisi z=0'da referans kenar olarak |
+
 ## Ortak candidate şeması
 
 Layer Convention Agent ve Geometry Interpreter Agent, Comparator'a

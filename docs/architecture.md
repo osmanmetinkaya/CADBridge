@@ -41,8 +41,37 @@ CADBridge/
                                    kullanıcının gerçek Visual Studio + AutoCAD
                                    ortamına bırakıldı (bkz. Plugin projesi
                                    içindeki README).
-  sketchup-plugin/        — Ruby, SketchupExtension (bridge.json okuma + 3D geometri üretimi)
+  sketchup-plugin/
+    cadbridge.rb            — SketchupExtension kaydı (loader, algoritma yok)
+    cadbridge/
+      main.rb               — menü komutu, dosya seçimi; core'u çağırıp
+                               sonucu adapter'a verir (algoritma yok)
+      core/                 — TESTABLE: saf Ruby, 'sketchup.rb' require ETMEZ
+        bridge_reader.rb     — bridge.json parse + şema/meta doğrulama
+        mesh_plan.rb         — seam: points/polygons/layer_name/review? düz veri
+        defaults.rb          — tüm mm varsayımları (duvar/pencere/kapı) tek yerde
+        plan_factory.rb      — entity → builder dispatch + confidence<0.6 review kararı
+        builders/
+          wall_builder.rb, floor_builder.rb, window_builder.rb, door_builder.rb
+        geometry_utils.rb    — chord, normal, offset gibi saf yardımcılar
+      adapter/
+        sketchup_renderer.rb — TEK untestable dosya: MeshPlan → Geom::PolygonMesh/
+                                fill_from_mesh/layers/materials
+    test/                   — minitest, sandboxta `ruby -Ilib` ile koşar
 ```
+
+### Test edilebilirlik sınırı (SketchUp tarafı, AutoCAD ile simetrik)
+
+`Sketchup`/`Geom::PolygonMesh` gibi sınıflar yalnızca SketchUp'ın kendi
+gömülü Ruby ortamında tanımlı; düz `ruby` CLI'da mevcut değil (bu
+sandboxta `ruby 3.3.6` + `minitest` kurulu ama gerçek `Sketchup`/`Geom`
+yok). Bu yüzden aynı ilke burada da uygulanıyor: `core/` altındaki
+hiçbir dosya `Sketchup`/`Geom`'a referans veremez (verirse test anında
+`NameError` ile patlar — disiplin kendiliğinden doğrulanır). Seam,
+`MeshPlan` — `fill_from_mesh`'in beklediği şekle birebir uyan indeksli
+veri (`points`, `polygons`, `layer_name`, `review?`). `adapter/sketchup_renderer.rb`
+bu planı SketchUp çağrılarına dönüştüren TEK, algoritma içermeyen
+dosyadır ve bu ortamda derlenip test edilemez.
 
 ### Test edilebilirlik sınırı (extraction katmanı)
 
@@ -105,11 +134,24 @@ tasarlanıyor, ama bu tur onu **yazmıyor** (bkz. Açık Sorular).
    orijinal layer bilgisiyle birlikte yazılır (tam şema için
    `docs/api-research.md`).
 6. **SketchUp plugin**: `bridge.json` okunur, tipe göre 3D geometri
-   üretilir (duvar → ekstrüzyon, zemin → yüzey, kapı/pencere → boşluk/blok).
-   Toplu geometri `Geom::PolygonMesh` + `fill_from_mesh` ile oluşturulur.
+   üretilir:
+   - **wall**: kendi 2D footprint'i, sabit duvar yüksekliğine (2700mm)
+     ekstrüde edilir.
+   - **floor**: kapalı poligon, z=0'da düz bir yüzey.
+   - **window**: kendi footprint'inden **bağımsız** (hangi duvara ait
+     olduğu bridge.json'da yok, cross-entity ilişki izolasyon mimarisiyle
+     çelişir), parapet yüksekliğinden (900mm) pencere yüksekliğine
+     (1500mm, üst kot 2400mm) kadar serbest duran ince bir kutu.
+   - **door**: geometri bir dikdörtgen açıklık değil, kapı kanadı sweep
+     **yayı** (arc) — yayın kirişi (chord) açıklık genişliği kabul
+     edilip zeminden başlayan basit bir kanat kutusu (kalınlık 40mm,
+     yükseklik 2100mm) üretilir; yayın kendisi de z=0'da referans bir
+     kenar olarak basılır (açılış yönünü göstermesi için).
+   - Toplu geometri `Geom::PolygonMesh` + `fill_from_mesh` ile oluşturulur.
    **Güven skorunun altındaki elemanlar** (eşik: `confidence < 0.6`) ayrı
-   bir `CADBridge_Review` layer'ına konur ve farklı renklendirilir — asla
-   sessizce otomatik kabul edilmez.
+   bir `CADBridge_Review` layer'ına konur ve yarı saydam turuncu
+   (`RGB 255,128,0`, alpha 0.5) materyalle işaretlenir — asla sessizce
+   otomatik kabul edilmez.
 
 ## Güven skoru ilkesi
 
@@ -122,10 +164,20 @@ kullanıcıdan gizlemez; düşük güvenli elemanlar ayrıca gösterilir.
 Aşağıdaki değerler henüz gerçek proje verisiyle doğrulanmadı — varsayım
 olarak işaretleniyor, ileride kalibre edilmeli:
 
-- **Varsayılan duvar yüksekliği**: 2700mm (tipik kat yüksekliği varsayımı,
-  doğrulanmadı — bridge.json'da yükseklik bilgisi yoksa SketchUp tarafı
-  bunu kullanacak).
-- **Pencere parapet (denizlik) yüksekliği**: henüz belirlenmedi.
+- **Varsayılan duvar yüksekliği**: 2700mm. bridge.json şemasına şimdilik
+  bir `wall_height_mm` alanı eklenmedi (SketchUp tarafında `core/defaults.rb`
+  içinde tek sabit) — AutoCAD 2D plandan bu bilgi zaten üretilemiyor,
+  şemaya spekülatif alan eklemek yerine erteleme tercih edildi (geriye
+  dönük uyumluluk ilkesi sayesinde ileride bedavaya eklenebilir).
+- **Pencere parapet (denizlik) yüksekliği**: 900mm; **pencere yüksekliği**:
+  1500mm (üst kot 2400mm, 2700mm tavana 300mm lento payı). Pencere,
+  kendi footprint'inden bağımsız serbest duran bir kutu olarak
+  üretiliyor (hangi duvara ait olduğu bridge.json'da yok — bkz.
+  Uçtan uca veri akışı). Varsayım, doğrulanmadı.
+- **Kapı kanadı kalınlığı**: 40mm; **kapı yüksekliği**: 2100mm (2040mm
+  kasa + eşik payı — TR yaygın pratik). Kapı geometrisi bir açıklık
+  dikdörtgeni değil, sweep yayı olduğu için açıklık genişliği yayın
+  kirişinden (chord) türetiliyor. Varsayım, doğrulanmadı.
 - **Duvar kalınlığı bandı** (Geometry Interpreter Agent, kapalı
   dikdörtgen footprint'in kısa kenarı): 70–400mm. Gerekçe: TR pratiğinde
   yarım tuğla bölme duvarı ~85mm (sıvasız çizilirse 80'in altına
