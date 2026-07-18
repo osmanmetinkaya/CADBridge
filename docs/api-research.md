@@ -119,6 +119,7 @@ Alan sözlüğü:
 | `entities[].matched_rule` | Şeffaflık için: hangi kural(lar) eşleşti                    |
 | `entities[].geometry` | Normalize edilmiş (mm) ham nokta listesi                        |
 | `entities[].attributes` | Tipe özgü ek veri (duvar kalınlığı vb.), opsiyonel            |
+| `entities[].attributes.conflict` | Yalnızca `true` iken yazılır — Comparator'ın iki ajanı farklı tiplerde bulduğu (çelişki) durumu işaretler; `source` dizisinin uzunluğu tek başına bunu ayırt edemez (hemfikirlikte de 2 eleman olabilir). Bkz. `agents/comparator-agent.md`. |
 
 Geriye dönük uyumluluk ilkesi: yeni alan eklemek serbest, mevcut alan
 adı veya anlamı değiştirilmez.

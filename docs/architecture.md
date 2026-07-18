@@ -112,7 +112,19 @@ olarak işaretleniyor, ileride kalibre edilmeli:
   zenginleştirme / pairing ön-işleme" katmanı eklenip paralel çiftlerin
   sentetik tek entity'ye birleştirilmesi değerlendirilebilir.
 - **Düşük güven eşiği** `confidence < 0.6`: keyfi başlangıç değeri,
-  kullanıcı testleriyle ayarlanabilir.
-- **LLM fallback**: Comparator arayüzü genişletilebilir bırakıldı ama ne
-  zaman/hangi koşulda devreye gireceği (örn. sadece `unknown` elemanlar
-  için mi, yoksa çelişkili olanlar için de mi) henüz kararlaştırılmadı.
+  kullanıcı testleriyle ayarlanabilir. **Sabitlendi** — Comparator'ın
+  tüm tavan formülleri bu değere göre kalibre edildi (aşağıya bkz.),
+  bu yüzden bundan sonra değiştirilirse Comparator tavanlarının da
+  (0.55/0.95) gözden geçirilmesi gerekir.
+- **Comparator tavanları**: hemfikirlik durumunda `0.95` (kural tabanlı
+  iki heuristiğin birleşimi asla ~1.0 kesinlik iddia etmemeli), çelişki
+  ve tek-kaynak durumunda `0.55` (0.6 review eşiğinden kasıtlı marj —
+  bkz. `agents/comparator-agent.md`). İkisi de gerçek proje verisiyle
+  kalibre edilmedi, mühendislik muhakemesiyle belirlendi. Sistem
+  değişmezi: **0.6 eşiğinin üstüne yalnızca en az iki ajanın hemfikirliği
+  çıkabilir.**
+- **LLM fallback**: Comparator'ın `Resolve` imzası N-ary (kaynak sayısından
+  bağımsız) tasarlandığı için üçüncü bir ajan eklenebilir, ama ne
+  zaman/hangi koşulda (Comparator'dan önce mi çalışır, düşük güvenli
+  sonuçları görüp mü tetiklenir) henüz kararlaştırılmadı — bkz.
+  `agents/comparator-agent.md`.
