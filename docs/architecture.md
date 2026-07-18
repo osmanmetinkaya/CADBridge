@@ -87,9 +87,30 @@ olarak işaretleniyor, ileride kalibre edilmeli:
   doğrulanmadı — bridge.json'da yükseklik bilgisi yoksa SketchUp tarafı
   bunu kullanacak).
 - **Pencere parapet (denizlik) yüksekliği**: henüz belirlenmedi.
-- **Duvar kalınlığı eşiği** (Geometry Interpreter Agent için "paralel
-  çizgi = duvar" sayılacak ofset aralığı, örn. 80–300mm): varsayım,
-  gerçek çizim örnekleriyle doğrulanmalı.
+- **Duvar kalınlığı bandı** (Geometry Interpreter Agent, kapalı
+  dikdörtgen footprint'in kısa kenarı): 70–400mm. Gerekçe: TR pratiğinde
+  yarım tuğla bölme duvarı ~85mm (sıvasız çizilirse 80'in altına
+  düşebilir, bu yüzden alt sınır 70), mantolamalı dış duvar 350–400mm'e
+  çıkabilir. Varsayım, gerçek çizim örnekleriyle doğrulanmalı.
+- **Kapı sweep arc parametreleri**: yarıçap `600–1200mm`, sweep açısı
+  `60°–120°` (TR'de WC/banyo kapıları 60–70cm yaygın). Varsayım.
+- **Pencere ince-dikdörtgen bandı**: uzunluk `400–1200mm`, confidence
+  her zaman `0.5` (izole geometriden kapı/pencere ayrımı ilkesel olarak
+  yapılamadığı için — bkz. `agents/geometry-interpreter-agent.md`).
+  1200–1800mm arası geniş pencerelerin wall@0.5'e kayması bilinen bir
+  sınırlama.
+- **Floor mutlak alan eşikleri**: `1.5 m²` (min yaşanabilir hacim/WC) ve
+  `5 m²` (oda ölçeği net eşik), min OBB genişliği `600mm`. "En büyük
+  kapalı alan = floor" göreli kuralının yerini aldı — o kural çok odalı
+  planlarda yalnızca tek floor üretiyordu. Varsayım.
+- **Dikdörtgensellik eşiği** `rect ≥ 0.85`, yay uydurma toleransı
+  `max(%2·R, 5mm)`: varsayım.
+- **Centerline ve paralel-çift duvar temsilleri**: Geometry Interpreter
+  Agent bunları tespit edemiyor (izole entity kısıtı — cross-entity
+  ilişki kurmuyor), yalnızca Layer Convention Agent'ın sinyaliyle
+  review'a düşüyor. İleride ajanlardan önce çalışan bir "geometri
+  zenginleştirme / pairing ön-işleme" katmanı eklenip paralel çiftlerin
+  sentetik tek entity'ye birleştirilmesi değerlendirilebilir.
 - **Düşük güven eşiği** `confidence < 0.6`: keyfi başlangıç değeri,
   kullanıcı testleriyle ayarlanabilir.
 - **LLM fallback**: Comparator arayüzü genişletilebilir bırakıldı ama ne
