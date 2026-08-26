@@ -31,16 +31,26 @@ CADBridge/
     CADBridge.AutoCad.Tests/    — xUnit testleri (CI'da/sandboxta çalışır)
     CADBridge.AutoCad.Plugin/   — Gerçek AutoCAD .NET API'sine (AcCoreMgd/
                                    AcDbMgd/AcMgd) bağımlı ince adapter +
-                                   [CommandMethod] giriş noktası. **Bu proje
-                                   bu ortamda hiç derlenmedi/test edilmedi**
-                                   — AutoCAD Windows-only, gerekli DLL'ler
-                                   yalnızca AutoCAD kurulumu/ObjectARX SDK
-                                   ile gelir, sandboxta temin edilemez. Kod
-                                   docs/api-research.md'deki belgeli API
-                                   desenine göre yazıldı ama doğrulama
-                                   kullanıcının gerçek Visual Studio + AutoCAD
-                                   ortamına bırakıldı (bkz. Plugin projesi
-                                   içindeki README).
+                                   [CommandMethod] giriş noktası
+                                   (`DrawingExtractor` + `Commands`).
+                                   AutoCAD Windows-only olduğu için önceki
+                                   iterasyonlarda (Linux sandbox) hiç
+                                   derlenemedi/test edilemedi; şimdi gerçek
+                                   bir Windows + AutoCAD 2027 ortamında
+                                   derlendi ve 2026-08-26'da NETLOAD ile
+                                   canlı bir AutoCAD oturumunda uçtan uca
+                                   doğrulandı (Transaction/BlockTableRecord
+                                   traversal → Orchestrator → bridge.json,
+                                   hem tek-kaynaklı hem hemfikir sınıflandırma
+                                   senaryoları). Hedef framework `net10.0`
+                                   (AutoCAD 2027'nin managed DLL'leri bunu
+                                   gerektiriyor — bkz. Plugin projesi
+                                   içindeki README), `CADBridge.AutoCad` ve
+                                   `Tests` `net8.0`'da kalmaya devam ediyor.
+                                   Henüz doğrulanmadı: `BlockReference`
+                                   (kapı/pencere blok) extraction ve
+                                   kaydedilmiş bir .dwg üzerinde dosya-yanına-
+                                   yazma yolu.
   sketchup-plugin/
     cadbridge.rb            — SketchupExtension kaydı (loader, algoritma yok)
     cadbridge/
@@ -75,9 +85,10 @@ dosyadır ve bu ortamda derlenip test edilemez.
 
 ### Test edilebilirlik sınırı (extraction katmanı)
 
-`Autodesk.AutoCAD.*` namespace'lerini kullanan hiçbir kod bu geliştirme
-ortamında derlenemez/test edilemez (yukarıya bkz.). Bu yüzden extraction
-katmanı bilinçli olarak ikiye bölündü:
+`Autodesk.AutoCAD.*` namespace'lerini kullanan kod yalnızca gerçek bir
+AutoCAD kurulumu olan Windows ortamında derlenebilir (sandbox/CI'da
+derlenemez — yukarıya bkz.). Bu yüzden extraction katmanı bilinçli
+olarak ikiye bölündü, gerçek AutoCAD ortamında bile:
 
 - **Seam (ayrım noktası)**: AutoCAD'den çıkan "aptal veri" —
   `RawDrawingData` POCO'su (entity başına handle/layer/block adı/ham
