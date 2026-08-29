@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- AutoCAD 2027'nin yönetilen API DLL'leri .NET 10 çalışma zamanına
+         göre derlenmiş (System.Runtime 10.0.0.0); net8.0 ile derlenirse
+         CS1705 sürüm uyuşmazlığı hatası verir. CADBridge.AutoCad ve
+         Tests projeleri net8.0'da kalır — bu sadece Plugin'in AutoCAD
+         sürümüne özgü gereksinimi. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CADBridge.AutoCad.Plugin</RootNamespace>
+    <!-- AutoCAD .NET eklentileri AutoCAD.exe içinde barındırılır; yönetilen
+         API DLL'leri zaten yüklü olduğu için kopyalanmamalı. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <!-- AutoCAD kurulum klasörü — makineden makineye değişir. Bu makinede
+       AutoCAD 2027, C:\Program Files\Autodesk\AutoCAD 2027\ altında. Başka
+       bir makinede farklıysa bu yolu güncelleyin (veya AUTOCAD_INSTALL_DIR
+       ortam değişkeniyle override edin). -->
+  <PropertyGroup>
+    <AutoCadInstallDir Condition="'$(AutoCadInstallDir)' == '' AND '$(AUTOCAD_INSTALL_DIR)' != ''">$(AUTOCAD_INSTALL_DIR)</AutoCadInstallDir>
+    <AutoCadInstallDir Condition="'$(AutoCadInstallDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2027\</AutoCadInstallDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="AcCoreMgd">
+      <HintPath>$(AutoCadInstallDir)AcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcDbMgd">
+      <HintPath>$(AutoCadInstallDir)AcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcMgd">
+      <HintPath>$(AutoCadInstallDir)AcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CADBridge.AutoCad\CADBridge.AutoCad.csproj" />
+  </ItemGroup>
+
+</Project>
